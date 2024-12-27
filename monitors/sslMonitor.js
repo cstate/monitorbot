@@ -10,9 +10,9 @@ async function sslMonitor(site) {
 		console.log(color(`[${site.name}] ${message}`));
 	};
 	const options = {
-		host: site.url.replace(/https?:\/\//, ''), // Remove protocol from hostname
+		host: site.url.replace(/https?:\/\//, ''),
 		port: 443,
-		servername: site.url.replace(/https?:\/\//, ''), // Ensure SNI is used
+		servername: site.url.replace(/https?:\/\//, ''),
 	};
 
 	try {
@@ -29,16 +29,16 @@ async function sslMonitor(site) {
 				if (!config.testMode) {
 					logStatus('Taking action: create or update incident', 'fail');
 					incidentManager.createOrUpdateIncident(
-						'ssl-expiry',
+						'ssl-certificate',
 						`${site.name} SSL certificate expiring soon!`,
-						`Certificate expires in ${daysUntilExpiration} days`,
-						'warning',
+						`SSL Check failed: Certificate expires in ${daysUntilExpiration} days`,
+						'notice',
 						site
 					);
 				} else {
 					console.log(
 						chalk.yellow(
-							'  [TEST MODE] Would create or update incident: ssl-expiry'
+							'  [TEST MODE] Would create or update incident: ssl-certificate'
 						)
 					);
 				}
@@ -46,11 +46,11 @@ async function sslMonitor(site) {
 				logStatus(`SSL Check successful`, 'success');
 				if (!config.testMode) {
 					logStatus('Taking action: resolve incident if existing', 'success');
-					incidentManager.resolveIncidentIfExisting('ssl-expiry', site);
+					incidentManager.resolveIncidentIfExisting('ssl-certificate', site);
 				} else {
 					console.log(
 						chalk.yellow(
-							'  [TEST MODE] Would resolve incident if existing: ssl-expiry'
+							'  [TEST MODE] Would resolve incident if existing: ssl-certificate'
 						)
 					);
 				}
@@ -64,16 +64,16 @@ async function sslMonitor(site) {
 			if (!config.testMode) {
 				logStatus('Taking action: create or update incident', 'fail');
 				incidentManager.createOrUpdateIncident(
-					'ssl-error',
+					'ssl-certificate',
 					`${site.name} SSL connection error!`,
-					error.message,
-					'major',
+					`SSL Check failed: ${error.message}`,
+					'disrupted',
 					site
 				);
 			} else {
 				console.log(
 					chalk.yellow(
-						'  [TEST MODE] Would create or update incident: ssl-error'
+						'  [TEST MODE] Would create or update incident: ssl-certificate'
 					)
 				);
 			}
@@ -83,16 +83,16 @@ async function sslMonitor(site) {
 		if (!config.testMode) {
 			logStatus('Taking action: create or update incident', 'fail');
 			incidentManager.createOrUpdateIncident(
-				'ssl-error',
+				'ssl-certificate',
 				`${site.name} SSL connection error!`,
-				error.message,
-				'major',
+				`SSL Check failed: ${error.message}`,
+				'disrupted',
 				site
 			);
 		} else {
 			console.log(
 				chalk.yellow(
-					'  [TEST MODE] Would create or update incident: ssl-error'
+					'  [TEST MODE] Would create or update incident: ssl-certificate'
 				)
 			);
 		}

@@ -31,11 +31,11 @@ async function portMonitor(site) {
 
 		if (!config.testMode) {
 			logStatus('Taking action: resolve incident if existing', 'success');
-			await incidentManager.resolveIncidentIfExisting('port-error', site);
+			await incidentManager.resolveIncidentIfExisting('port-connectivity', site);
 		} else {
 			console.log(
 				chalk.yellow(
-					'  [TEST MODE] Would resolve incident if existing: port-error'
+					'  [TEST MODE] Would resolve incident if existing: port-connectivity'
 				)
 			);
 		}
@@ -43,21 +43,21 @@ async function portMonitor(site) {
 		if (!config.testMode) {
 			logStatus('Taking action: create or update incident', 'fail');
 			await incidentManager.createOrUpdateIncident(
-				'port-error',
+				'port-connectivity',
 				`${site.name} port connection error!`,
-				error.message,
-				'major',
+				`Port Check failed: ${error.message}`,
+				'disrupted',
 				site
 			);
 		} else {
 			console.log(
 				chalk.yellow(
-					'  [TEST MODE] Would create or update incident: port-error'
+					'  [TEST MODE] Would create or update incident: port-connectivity'
 				)
 			);
 		}
 	} finally {
-		client.destroy(); // Ensure the connection is closed
+		client.destroy();
 	}
 }
 

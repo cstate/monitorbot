@@ -15,7 +15,7 @@ async function pingMonitor(site) {
 				'ping-error',
 				`${site.name} is unreachable (ping)!`,
 				'Host unreachable',
-				'major',
+				'down',
 				site
 			);
 		} else {
@@ -31,7 +31,7 @@ async function pingMonitor(site) {
 			'ping-error',
 			`${site.name} is unreachable (ping)!`,
 			error.toString(),
-			'major',
+			'down',
 			site
 		);
 	}

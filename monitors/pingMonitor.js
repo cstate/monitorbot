@@ -19,29 +19,25 @@ async function pingMonitor(site) {
 			if (!config.testMode) {
 				logStatus('Taking action: create or update incident', 'fail');
 				await incidentManager.createOrUpdateIncident(
-					'ping-error',
+					'ping',
 					`${site.name} is unreachable (ping)!`,
-					'Host unreachable',
-					'major',
+					`Ping Check failed: Host unreachable`,
+					'disrupted',
 					site
 				);
 			} else {
 				console.log(
-					chalk.yellow(
-						'  [TEST MODE] Would create or update incident: ping-error'
-					)
+					chalk.yellow('  [TEST MODE] Would create or update incident: ping-error')
 				);
 			}
 		} else {
 			logStatus(`Ping Check successful: RTT ${result.time}ms`, 'success');
 			if (!config.testMode) {
 				logStatus('Taking action: resolve incident if existing', 'success');
-				await incidentManager.resolveIncidentIfExisting('ping-error', site);
+				await incidentManager.resolveIncidentIfExisting('ping', site);
 			} else {
 				console.log(
-					chalk.yellow(
-						'  [TEST MODE] Would resolve incident if existing: ping-error'
-					)
+					chalk.yellow('  [TEST MODE] Would resolve incident if existing: ping-error')
 				);
 			}
 		}
@@ -50,17 +46,15 @@ async function pingMonitor(site) {
 		if (!config.testMode) {
 			logStatus('Taking action: create or update incident', 'fail');
 			await incidentManager.createOrUpdateIncident(
-				'ping-error',
+				'ping',
 				`${site.name} is unreachable (ping)!`,
-				error.toString(),
-				'major',
+				`Ping Check failed: ${error.toString()}`,
+				'disrupted',
 				site
 			);
 		} else {
 			console.log(
-				chalk.yellow(
-					'  [TEST MODE] Would create or update incident: ping-error'
-				)
+				chalk.yellow('  [TEST MODE] Would create or update incident: ping-error')
 			);
 		}
 	}

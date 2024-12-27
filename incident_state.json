@@ -1,0 +1,9 @@
+{
+  "API-dns-resolution": {
+    "consecutiveFailures": 8,
+    "lastFailure": 1735294385469,
+    "severity": "down",
+    "incidentCreated": true,
+    "initialIncidentDate": "2024-12-27T09:43:40.482Z"
+  }
+}
