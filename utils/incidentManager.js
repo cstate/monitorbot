@@ -210,6 +210,7 @@ resolved: ${resolved}${resolvedWhen ? `
 resolvedWhen: ${resolvedWhen.toISOString()}` : ''}
 severity: "${severity}"
 affected: ["${site.name}"]
+automated: true
 id: "${id}"
 section: issue
 ---
