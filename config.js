@@ -3,7 +3,8 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default {
-	checkInterval: 5 * 1000, // 60 seconds (adjust as needed)
+	runningMethod: process.env.RUNNING_METHOD || 'cron', // 'cron' for continuous process or 'single' for check once and quit
+	checkInterval: process.env.CHECK_INTERVAL || 5 * 1000, // 5 seconds (adjust as needed), only for cron running method
 	httpMonitor: {
 		urls: [
 			{
