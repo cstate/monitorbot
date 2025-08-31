@@ -1,0 +1,21 @@
+run_monitorbot:
+  image: oven/bun:alpine
+  cache:
+    key: monitorbot-cache
+    paths:
+      - node_modules/
+      - incident_state.json  # Caches the incident states between job runs
+  before_script:
+    - echo "Installing dependencies..."
+    # - apk add git  # Uncomment when using Git deployment method
+    - bun install --no-save
+  script:
+    - echo "Running monitorbot..."
+    - bun index.js
+  rules:
+    # Run pipeline from a schedule defined in GitLab
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    # Run if manually triggered from GitLab UI
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    # Optional: allow running on manual trigger from another job
+    - when: manual

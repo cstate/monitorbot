@@ -42,13 +42,15 @@ async function runChecks() {
 // Initial run
 runChecks();
 
-// Schedule checks using CronJob
-const job = new CronJob(
-	`*/${config.checkInterval / 1000} * * * * *`, // Run every `checkInterval` seconds
-	runChecks,
-	null,
-	true,
-	'America/Los_Angeles' // Adjust the time zone as needed
-);
+if (config.runningMethod === 'cron') {
+	// Schedule checks using CronJob
+	const job = new CronJob(
+		`*/${config.checkInterval / 1000} * * * * *`, // Run every `checkInterval` seconds
+		runChecks,
+		null,
+		true,
+		'America/Los_Angeles' // Adjust the time zone as needed
+	);
 
-job.start();
+	job.start();
+};

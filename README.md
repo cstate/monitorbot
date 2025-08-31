@@ -76,7 +76,8 @@ Modify the `config.js` file to set up the sites you want to monitor and adjust o
 
 ```javascript
 export default {
-	checkInterval: 60 * 1000, // Check interval in milliseconds (60 seconds)
+	runningMethod: 'cron', // 'cron' for continuous process or 'single' for check once and quit
+	checkInterval: 5 * 1000, // 5 seconds (adjust as needed), only for cron running method
 	testMode: true, // Set to false for actual deployment
 	deployment: {
 	method: 'local', // Deployment method: local, ftp, or git
@@ -146,7 +147,7 @@ export default {
 
 ## Usage
 
-1. **Test Mode (Dry Run):**
+### Test Mode (Dry Run)
 
 To run the checks without creating/modifying incident files, make sure `testMode` is set to `true` in `config.js`. Then run:
 
@@ -158,7 +159,7 @@ If you edit the `config.js` file, you will need to restart the script for the ch
 
 This will output the results of the checks to the console in a color-coded format.
 
-2. **Deployment Mode (Create/Update Incidents):**
+### Deployment Mode to Host (Create/Update Incidents)
 
 *   Set `testMode` to `false` in `config.js`.
 *   Choose your deployment method (`local`, `ftp`, or `git`) in `config.js`.
@@ -171,9 +172,9 @@ node index.js
 
 This will perform the checks and create/update incident Markdown files in your Hugo/cState site based on the results.
 
-## Scheduling
+#### Scheduling
 
-The bot uses `cron` to run checks periodically. The default interval is set to 60 seconds in `config.js`. You can adjust the `checkInterval` value or modify the cron expression in `index.js` for more advanced scheduling.
+ When the bot uses the `cron` running method, it uses `cron` to run checks periodically. The default interval is set to 60 seconds in `config.js`. You can adjust the `checkInterval` value or modify the cron expression in `index.js` for more advanced scheduling.
 
 **Example (run every 5 minutes):**
 
@@ -187,6 +188,29 @@ const job = new CronJob(
   'America/Los_Angeles'
 );
 ```
+
+### Deployment Mode in GitLab Pipelines *(experimental)*
+
+This deployment mode relies on the cron scheduler of GitLab pipelines. The bot will run the checks once in the pipeline, perform an issue deployment if necessary and quit. The *incident state* is transferred between pipeline runs using the pipeline cache. 
+
+> **Note**: when a cache miss occurs (e.g. due to a network error), the *incident state* is reset, which may result in false positives in your monitor. Deploying the `incident_state.json` every once in a while should make it more reliable, but for simple monitoring tasks using the cache should suffice most of the times.
+
+*   Set `testMode` to `false` and `runningMode` to `single` in `config.js`.
+*   Choose your deployment method (`local`, `ftp`, or `git`) in `config.js`.
+*   Make sure your `.env` file is configured correctly for your chosen deployment method.
+*   When choosing deployment method `git`, make sure to add the git package in the `.gitlab-ci.yml`, by uncommenting the corresponding line.
+
+```yaml
+# In .gitlab-ci.yml
+  before_script:
+    - echo "Installing dependencies..."
+    - apk add git  # <-- uncomment this line when using Git deployment method
+    - bun install --no-save
+```
+
+*   In GitLab, schedule a pipeline for this repository for a chosen interval in **Project** > **Build** > **Pipeline schedules**.
+
+On a small GitLab runner, this pipeline should take about **~20 seconds**, depending on the amount of checks you do.
 
 ## Incident Report Format
 
