@@ -3,6 +3,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export default {
+	deployment: {
+		method: 'local', // Default deployment method (local, ftp, or git)
+	},
+	testMode: process.env.TESTMODE || false, // Set to false for actual deployment
 	runningMethod: process.env.RUNNING_METHOD || 'cron', // 'cron' for continuous process or 'single' for check once and quit
 	checkInterval: process.env.CHECK_INTERVAL || 5 * 1000, // 5 seconds (adjust as needed), only for cron running method
 	httpMonitor: {
@@ -46,10 +50,6 @@ export default {
 		timeout: 5, // Timeout in seconds
 		sites: [
 		],
-	},
-	testMode: false, // Set to true for testing, false for actual deployment
-	deployment: {
-		method: 'local', // Default deployment method (local, ftp, or git)
 	},
 	escalationThreshold: 5, // Number of consecutive failures before escalating to 'down'
 	initialDelay: 2, // Number of initial consecutive failures to ignore (optional)

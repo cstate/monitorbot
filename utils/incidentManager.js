@@ -1,5 +1,5 @@
 import path from 'path';
-import config from '../config.js';
+import config from '../config/config.js';
 import Deployer from './deployer.js';
 import fs from 'fs';
 import chalk from 'chalk';

@@ -1,4 +1,4 @@
-import config from './config.js';
+import config from './config/config.js'; // Moved to subdir for easier docker deployment
 import httpMonitor from './monitors/httpMonitor.js';
 import sslMonitor from './monitors/sslMonitor.js';
 import dnsMonitor from './monitors/dnsMonitor.js';
@@ -49,7 +49,7 @@ if (config.runningMethod === 'cron') {
 		runChecks,
 		null,
 		true,
-		'America/Los_Angeles' // Adjust the time zone as needed
+		'Europe/Berlin' // Adjust the time zone as needed
 	);
 
 	job.start();

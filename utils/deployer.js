@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import ftp from 'ftp';
 import simpleGit from 'simple-git';
-import config from '../config.js';
+import config from '../config/config.js';
 
 class Deployer {
 	constructor() {

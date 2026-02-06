@@ -1,0 +1,13 @@
+services:
+  monitorbot:
+    container_name: cstate-monitorbot
+    image: cstate-mobitorbot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "always"
+    env_file: .env
+    volumes:
+      - ./config:/app/config
+      # Mount local cstate folder for incident creation
+      #- ./cstate/:/app/cstate

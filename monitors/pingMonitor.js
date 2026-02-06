@@ -1,5 +1,5 @@
 import ping from 'ping';
-import config from '../config.js';
+import config from '../config/config.js';
 import IncidentManager from '../utils/incidentManager.js';
 import chalk from 'chalk';
 
