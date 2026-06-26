@@ -17,7 +17,7 @@ The cState MonitorBot is a Node.js-based monitoring tool that checks the status 
 *   **Test Mode:** Allows you to run checks and see the results without actually creating or modifying incident files.
 *   **Configurable:** Easily configure the sites to monitor, check intervals, and other settings.
 *   **Color-Coded Output:** Uses `chalk` to provide clear and informative color-coded output in the console.
-*   **Incident Report Format:** Generates incident reports in Markdown format with frontmatter for easy integration with cState.
+*   **Incident Report Format:** Generates cState v7-compatible incident Markdown with `section: issue` and `automated: true` frontmatter.
 *   **Extensible, e.g. for staff notifications (your own)**: Can act as push service for notifications if extended with custom code.
 
 ## Requirements
@@ -224,12 +224,15 @@ resolved: false
 section: issue
 automated: true
 severity: "down"  # Or "disrupted", "notice"
-affected: ["Example Site"]
+affected:
+  - "Example Site"
 id: "http-status-example-site"
 ---
 
 Incident description here...
 ```
+
+MonitorBot writes incidents only. cState v7 operational records such as experiments and release notes should be created through cState itself or the CLI, not from monitor failure checks.
 
 ## Contributing
 

@@ -17,7 +17,7 @@ class IncidentManager {
 		const thedate = new Date();
 		const dateString = thedate.toISOString().slice(0, 10);
 		const incidentId = `${type}-${site.name.replace(/\s+/g, '-').toLowerCase()}`;
-		const incidentFile = path.join(
+		const incidentFile = this.state[incidentKey]?.incidentFile || path.join(
 			'content',
 			'issues',
 			`${dateString}-${incidentId}.md`
@@ -30,6 +30,7 @@ class IncidentManager {
 				severity: 'none',
 				incidentCreated: false,
 				initialIncidentDate: null, // Store the initial incident date
+				incidentFile: null,
 			};
 		}
 
@@ -44,7 +45,9 @@ class IncidentManager {
 				chalk.blue(`[${site.name}] [${type}] Creating new incident...`)
 			);
 
-			state.initialIncidentDate = thedate; // Set the initial date
+			state.initialIncidentDate = thedate.toISOString(); // Set the initial date
+			state.incidentFile = incidentFile;
+			state.severity = severity;
 			const initialDescription = config.incidentMessages.initial
 				.replace('{{type}}', type)
 				.replace('{{site.name}}', site.name);
@@ -54,7 +57,7 @@ class IncidentManager {
 				title,
 				this.formatIncidentUpdate(initialDescription, thedate.toISOString()),
 				severity,
-				state.initialIncidentDate.toISOString(),
+				state.initialIncidentDate,
 				false,
 				null,
 				site
@@ -137,7 +140,7 @@ class IncidentManager {
 			const thedate = new Date();
 			const dateString = thedate.toISOString().slice(0, 10);
 			const incidentId = `${type}-${site.name.replace(/\s+/g, '-').toLowerCase()}`;
-			const incidentFile = path.join(
+			const incidentFile = this.state[incidentKey].incidentFile || path.join(
 				'content',
 				'issues',
 				`${dateString}-${incidentId}.md`
@@ -172,7 +175,7 @@ class IncidentManager {
 						resolvedDescription,
 						thedate.toISOString()
 					) + existingUpdates,
-					'resolved',
+					this.state[incidentKey].severity === 'none' ? 'notice' : this.state[incidentKey].severity,
 					this.state[incidentKey].initialIncidentDate,
 					true,
 					thedate,
@@ -203,19 +206,31 @@ class IncidentManager {
 		resolvedWhen,
 		site
 	) {
+		const resolvedWhenLine = resolvedWhen
+			? `\nresolvedWhen: ${this.formatDateValue(resolvedWhen)}`
+			: '';
 		const frontmatter = `---
-title: "${title}"
-date: ${date}
-resolved: ${resolved}${resolvedWhen ? `
-resolvedWhen: ${resolvedWhen.toISOString()}` : ''}
+title: ${this.formatYamlString(title)}
+date: ${this.formatDateValue(date)}
+resolved: ${resolved}${resolvedWhenLine}
 severity: "${severity}"
-affected: ["${site.name}"]
-id: "${id}"
+affected:
+  - ${this.formatYamlString(site.name)}
+id: ${this.formatYamlString(id)}
 section: issue
+automated: true
 ---
 
 ${description}`;
 		return frontmatter;
+	}
+
+	formatDateValue(value) {
+		return value instanceof Date ? value.toISOString() : value;
+	}
+
+	formatYamlString(value) {
+		return JSON.stringify(value || '');
 	}
 
 	formatIncidentUpdate(message, timestamp) {
@@ -230,6 +245,7 @@ ${description}`;
 				severity: 'none',
 				incidentCreated: false,
 				initialIncidentDate: null,
+				incidentFile: null,
 			};
 		}
 	}

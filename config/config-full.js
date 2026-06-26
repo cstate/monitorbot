@@ -75,9 +75,9 @@ export default {
 	},
 	incidentMessages: {
 		initial:
-			'*Automated system alert* - We are sensing a disruption in our {{type}} monitor. This means that end users may experience issues with our "{{site.name}}". This may be temporary.',
+			'*Automated system alert* - The {{type}} monitor is failing for "{{site.name}}". Users may be affected while checks continue.',
 		escalated:
-			'This issue has been ongoing for five consecutive checks and has been escalated to a **severe** status. A human has been alerted and will take action as soon as possible. For support, please contact us on the information present on this website\'s homepage.',
-		resolved: 'The issue with our system "{{site.name}}" has been resolved.',
+			'This issue has failed consecutive checks and is now marked **severe**. Support has been alerted.',
+		resolved: '"{{site.name}}" is passing checks again.',
 	},
 };
