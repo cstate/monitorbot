@@ -17,7 +17,8 @@ The cState MonitorBot is a Node.js-based monitoring tool that checks the status 
 *   **Test Mode:** Allows you to run checks and see the results without actually creating or modifying incident files.
 *   **Configurable:** Easily configure the sites to monitor, check intervals, and other settings.
 *   **Color-Coded Output:** Uses `chalk` to provide clear and informative color-coded output in the console.
-*   **Incident Report Format:** Generates cState v7-compatible incident Markdown with `section: issue` and `automated: true` frontmatter.
+*   **Incident Report Format:** Generates cState v6/v7-compatible incident Markdown with `section: issue` and `automated: true` frontmatter.
+*   **cState v7 Records:** Can optionally write experiment records to `content/experiments` without changing component health.
 *   **Extensible, e.g. for staff notifications (your own)**: Can act as push service for notifications if extended with custom code.
 
 ## Requirements
@@ -91,6 +92,7 @@ export default {
 		expectStatus: 200, // Expected HTTP status code (default: 200)
 		method: 'GET', // HTTP method (default: GET)
 		maxRedirects: 5, // Maximum number of redirects to follow (default: 5)
+		outputMode: 'incident', // incident, experiment, announcement, or maintenance
 		},
 		// ... more sites
 	],
@@ -172,6 +174,43 @@ node index.js
 
 This will perform the checks and create/update incident Markdown files in your Hugo/cState site based on the results.
 
+### Output Modes
+
+Monitor failures write incidents by default:
+
+```javascript
+{
+  name: "API",
+  url: "https://www.example.com",
+  outputMode: "incident"
+}
+```
+
+You can opt a monitor into another output mode:
+
+* `incident`: writes unresolved incidents to `content/issues`. This is the default and is what drives operational status.
+* `experiment`: writes a cState v7 experiment record to `content/experiments`. `severity: notice` is a component-side notice, not an outage or degradation.
+* `announcement`: writes a resolved informational issue with `recordKind: announcement`.
+* `maintenance`: writes a resolved informational issue with `recordKind: maintenance`.
+
+Per-monitor record options:
+
+```javascript
+{
+  name: "API",
+  url: "https://www.example.com",
+  outputMode: "experiment",
+  record: {
+    state: "active", // active, completed, archived
+    severity: "notice", // none or notice for experiments
+    pin: true,
+    summary: "Search relevance rollout is active for API traffic."
+  }
+}
+```
+
+`pin: true` lets cState v7 show the record in the global homepage announcement band. Do not use `kind` in frontmatter; MonitorBot writes `recordKind`, while cState's API can continue exposing `kind` to consumers.
+
 #### Scheduling
 
  When the bot uses the `cron` running method, it uses `cron` to run checks periodically. The default interval is set to 60 seconds in `config.js`. You can adjust the `checkInterval` value or modify the cron expression in `index.js` for more advanced scheduling.
@@ -232,7 +271,38 @@ id: "http-status-example-site"
 Incident description here...
 ```
 
-MonitorBot writes incidents only. cState v7 operational records such as experiments and release notes should be created through cState itself or the CLI, not from monitor failure checks.
+## cState v7 Experiment Record Format
+
+Experiment records are generated in `content/experiments`:
+
+```yaml
+---
+title: "API cache rollout"
+date: 2026-05-09T09:00:00.000Z
+recordType: experiment
+recordKind: experiment
+state: active
+severity: notice
+pin: true
+affected:
+  - "API"
+summary: "Testing API cache behavior."
+id: "http-status-api"
+automated: true
+---
+```
+
+Experiments do not drive the summary status. They can appear beside affected components or in the homepage announcement band depending on `severity` and `pin`.
+
+## Dry-Run Frontmatter Snapshots
+
+Run:
+
+```bash
+npm test
+```
+
+The test script snapshots generated incident, experiment, announcement, and maintenance frontmatter so v6 compatibility and v7 reserved-key behavior stay stable.
 
 ## Contributing
 

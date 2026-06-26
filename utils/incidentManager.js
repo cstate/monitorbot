@@ -12,6 +12,14 @@ class IncidentManager {
 	}
 
 	async createOrUpdateIncident(type, title, description, severity, site) {
+		const outputMode = this.getOutputMode(type, site);
+		if (outputMode === 'experiment') {
+			return this.createOrUpdateExperimentRecord(type, title, description, severity, site);
+		}
+		if (outputMode === 'announcement' || outputMode === 'maintenance') {
+			return this.createOrUpdateInformationalIssue(type, title, description, severity, site, outputMode);
+		}
+
 		const incidentKey = `${site.name}-${type}`;
 		const now = Date.now();
 		const thedate = new Date();
@@ -56,7 +64,7 @@ class IncidentManager {
 				incidentId,
 				title,
 				this.formatIncidentUpdate(initialDescription, thedate.toISOString()),
-				severity,
+				this.normalizeIncidentSeverity(severity),
 				state.initialIncidentDate,
 				false,
 				null,
@@ -135,6 +143,15 @@ class IncidentManager {
 
 	async resolveIncidentIfExisting(type, site) {
 		const incidentKey = `${site.name}-${type}`;
+		const outputMode = this.getOutputMode(type, site);
+
+		if (outputMode === 'experiment') {
+			return this.completeExperimentRecordIfExisting(type, site);
+		}
+
+		if (outputMode === 'announcement' || outputMode === 'maintenance') {
+			return;
+		}
 
 		if (this.state[incidentKey] && this.state[incidentKey].incidentCreated) {
 			const thedate = new Date();
@@ -213,7 +230,7 @@ class IncidentManager {
 title: ${this.formatYamlString(title)}
 date: ${this.formatDateValue(date)}
 resolved: ${resolved}${resolvedWhenLine}
-severity: "${severity}"
+severity: "${this.normalizeIncidentSeverity(severity)}"
 affected:
   - ${this.formatYamlString(site.name)}
 id: ${this.formatYamlString(id)}
@@ -223,6 +240,214 @@ automated: true
 
 ${description}`;
 		return frontmatter;
+	}
+
+	async createOrUpdateExperimentRecord(type, title, description, severity, site) {
+		const recordKey = `${site.name}-${type}-experiment`;
+		const now = new Date();
+		const recordId = this.recordId(type, site);
+		const recordFile = this.state[recordKey]?.recordFile || path.join(
+			'content',
+			'experiments',
+			`${now.toISOString().slice(0, 10)}-${recordId}.md`
+		);
+
+		if (!this.state[recordKey]) {
+			this.state[recordKey] = {
+				recordCreated: false,
+				recordFile: null,
+				initialRecordDate: null,
+				state: null,
+			};
+		}
+
+		const state = this.state[recordKey];
+		const recordConfig = this.getRecordConfig(type, site);
+		const recordData = this.generateExperimentRecordMarkdown({
+			id: recordId,
+			title,
+			description: this.formatRecordBody(description, now.toISOString()),
+			date: state.initialRecordDate || now.toISOString(),
+			state: recordConfig.state || 'active',
+			severity: recordConfig.severity || this.experimentSeverity(severity),
+			pin: recordConfig.pin ?? false,
+			summary: recordConfig.summary || description,
+			site,
+		});
+
+		state.recordCreated = true;
+		state.recordFile = recordFile;
+		state.initialRecordDate = state.initialRecordDate || now.toISOString();
+		state.state = recordConfig.state || 'active';
+
+		await this.deployer.deploy(recordData, recordFile);
+		this.saveState();
+		console.log(chalk.green(`[${site.name}] [${type}] Experiment record written: ${recordFile}`));
+	}
+
+	async completeExperimentRecordIfExisting(type, site) {
+		const recordKey = `${site.name}-${type}-experiment`;
+		const state = this.state[recordKey];
+		if (!state?.recordCreated || !state.recordFile) {
+			return;
+		}
+
+		const now = new Date();
+		const recordConfig = this.getRecordConfig(type, site);
+		const recordData = this.generateExperimentRecordMarkdown({
+			id: this.recordId(type, site),
+			title: recordConfig.resolvedTitle || `${site.name} experiment completed`,
+			description: this.formatRecordBody(recordConfig.resolvedSummary || `"${site.name}" is passing checks again.`, now.toISOString()),
+			date: state.initialRecordDate || now.toISOString(),
+			state: 'completed',
+			severity: 'none',
+			pin: recordConfig.pin ?? false,
+			summary: recordConfig.resolvedSummary || `"${site.name}" is passing checks again.`,
+			site,
+		});
+
+		state.state = 'completed';
+		await this.deployer.deploy(recordData, state.recordFile);
+		this.resetState(recordKey);
+		this.saveState();
+		console.log(chalk.green(`[${site.name}] [${type}] Experiment record completed: ${state.recordFile}`));
+	}
+
+	async createOrUpdateInformationalIssue(type, title, description, severity, site, recordKind) {
+		const now = new Date();
+		const recordId = this.recordId(type, site);
+		const recordFile = path.join(
+			'content',
+			'issues',
+			`${now.toISOString().slice(0, 10)}-${recordId}.md`
+		);
+		const recordConfig = this.getRecordConfig(type, site);
+		const data = this.generateInformationalIssueMarkdown({
+			id: recordId,
+			title,
+			description: this.formatRecordBody(description, now.toISOString()),
+			date: now.toISOString(),
+			recordKind,
+			severity: this.normalizeIncidentSeverity(recordConfig.severity || 'notice', 'notice'),
+			pin: recordConfig.pin ?? (recordKind === 'announcement'),
+			summary: recordConfig.summary || description,
+			site,
+		});
+
+		await this.deployer.deploy(data, recordFile);
+		console.log(chalk.green(`[${site.name}] [${type}] ${recordKind} written: ${recordFile}`));
+	}
+
+	generateExperimentRecordMarkdown({
+		id,
+		title,
+		description,
+		date,
+		state = 'active',
+		severity = 'none',
+		pin = false,
+		summary = '',
+		site,
+	}) {
+		return `---
+title: ${this.formatYamlString(title)}
+date: ${this.formatDateValue(date)}
+recordType: experiment
+recordKind: experiment
+state: ${this.normalizeRecordState(state)}
+severity: ${this.normalizeRecordSeverity(severity)}
+pin: ${Boolean(pin)}
+affected:
+  - ${this.formatYamlString(site.name)}
+summary: ${this.formatYamlString(summary)}
+id: ${this.formatYamlString(id)}
+automated: true
+---
+
+${description}`;
+	}
+
+	generateInformationalIssueMarkdown({
+		id,
+		title,
+		description,
+		date,
+		recordKind,
+		severity = 'notice',
+		pin = false,
+		summary = '',
+		site,
+	}) {
+		return `---
+title: ${this.formatYamlString(title)}
+date: ${this.formatDateValue(date)}
+resolved: true
+informational: true
+severity: "${this.normalizeIncidentSeverity(severity, 'notice')}"
+affected:
+  - ${this.formatYamlString(site.name)}
+id: ${this.formatYamlString(id)}
+section: issue
+recordKind: ${recordKind}
+pin: ${Boolean(pin)}
+summary: ${this.formatYamlString(summary)}
+automated: true
+---
+
+${description}`;
+	}
+
+	getOutputMode(type, site) {
+		const mode = site.outputModes?.[type]
+			|| site.cstate?.outputModes?.[type]
+			|| site.monitorbot?.outputModes?.[type]
+			|| site.outputMode
+			|| site.cstate?.outputMode
+			|| site.monitorbot?.outputMode
+			|| config.outputModes?.[type]
+			|| config.outputMode
+			|| 'incident';
+		return ['incident', 'experiment', 'announcement', 'maintenance'].includes(mode)
+			? mode
+			: 'incident';
+	}
+
+	getRecordConfig(type, site) {
+		return site.records?.[type]
+			|| site.cstate?.records?.[type]
+			|| site.monitorbot?.records?.[type]
+			|| site.record
+			|| site.cstate?.record
+			|| site.monitorbot?.record
+			|| {};
+	}
+
+	recordId(type, site) {
+		const explicitId = this.getRecordConfig(type, site).id || site.id;
+		if (explicitId) {
+			return `${type}-${String(explicitId).replace(/\s+/g, '-').toLowerCase()}`;
+		}
+		return `${type}-${site.name.replace(/\s+/g, '-').toLowerCase()}`;
+	}
+
+	formatRecordBody(message, timestamp) {
+		return `${message}\n\n{{< track "${timestamp}" >}}\n`;
+	}
+
+	normalizeIncidentSeverity(severity, fallback = 'disrupted') {
+		return ['notice', 'disrupted', 'down'].includes(severity) ? severity : fallback;
+	}
+
+	normalizeRecordSeverity(severity) {
+		return ['none', 'notice'].includes(severity) ? severity : 'none';
+	}
+
+	normalizeRecordState(state) {
+		return ['active', 'completed', 'archived'].includes(state) ? state : 'active';
+	}
+
+	experimentSeverity(severity) {
+		return severity === 'notice' ? 'notice' : 'none';
 	}
 
 	formatDateValue(value) {

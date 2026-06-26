@@ -73,6 +73,7 @@ export default {
 	deployment: {
 		method: 'local', // Default deployment method (local, ftp, or git)
 	},
+	outputMode: 'incident', // incident, experiment, announcement, or maintenance
 	incidentMessages: {
 		initial:
 			'*Automated system alert* - The {{type}} monitor is failing for "{{site.name}}". Users may be affected while checks continue.',

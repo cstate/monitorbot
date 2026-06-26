@@ -6,6 +6,7 @@ export default {
 	deployment: {
 		method: 'local', // Default deployment method (local, ftp, or git)
 	},
+	outputMode: 'incident', // incident, experiment, announcement, or maintenance
 	testMode: process.env.TESTMODE || false, // Set to false for actual deployment
 	runningMethod: process.env.RUNNING_METHOD || 'cron', // 'cron' for continuous process or 'single' for check once and quit
 	checkInterval: process.env.CHECK_INTERVAL || 5 * 1000, // 5 seconds (adjust as needed), only for cron running method
@@ -19,6 +20,12 @@ export default {
 				method: 'GET', // HTTP method (default: GET)
 				expectStatus: 200, // Expected HTTP status code (default: 200)
 				followRedirect: false, // Follow redirects (default: false)
+				outputMode: 'incident', // Optional per-monitor override
+				record: {
+					pin: false,
+					severity: 'none',
+					summary: 'Short status-adjacent update shown by cState v7.',
+				},
 			},
 		],
 	},
