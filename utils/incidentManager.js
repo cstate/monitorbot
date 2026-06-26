@@ -39,6 +39,7 @@ class IncidentManager {
 				incidentCreated: false,
 				initialIncidentDate: null, // Store the initial incident date
 				incidentFile: null,
+				updates: [],
 			};
 		}
 
@@ -60,10 +61,12 @@ class IncidentManager {
 				.replace('{{type}}', type)
 				.replace('{{site.name}}', site.name);
 
+			const initialUpdate = this.formatIncidentUpdate(initialDescription, thedate.toISOString());
+			state.updates = [initialUpdate];
 			const incidentData = this.generateIncidentMarkdown(
 				incidentId,
 				title,
-				this.formatIncidentUpdate(initialDescription, thedate.toISOString()),
+				this.formatIncidentUpdates(state),
 				this.normalizeIncidentSeverity(severity),
 				state.initialIncidentDate,
 				false,
@@ -89,22 +92,11 @@ class IncidentManager {
 				)
 			);
 
-			const existingContent = fs.readFileSync(
-				path.join(process.cwd(), process.env.LOCAL_CSTATE_PATH, incidentFile),
-				'utf-8'
-			);
-			const frontmatterMatch = existingContent.match(/^---[\s\S]*?---\n/);
-			const existingUpdates = existingContent.substring(
-				frontmatterMatch ? frontmatterMatch[0].length : 0
-			);
-
+			this.prependIncidentUpdate(state, config.incidentMessages.escalated, thedate.toISOString());
 			const incidentData = this.generateIncidentMarkdown(
 				incidentId,
 				title,
-				this.formatIncidentUpdate(
-					config.incidentMessages.escalated,
-					thedate.toISOString()
-				) + existingUpdates, // Append new update to existing content
+				this.formatIncidentUpdates(state),
 				'down',
 				state.initialIncidentDate, // Use initialIncidentDate
 				false,
@@ -163,53 +155,34 @@ class IncidentManager {
 				`${dateString}-${incidentId}.md`
 			);
 
-			if (
-				!config.testMode &&
-				fs.existsSync(
-					path.join(process.cwd(), process.env.LOCAL_CSTATE_PATH, incidentFile)
+			const resolvedDescription = config.incidentMessages.resolved.replace(
+				'{{site.name}}',
+				site.name
+			);
+			this.prependIncidentUpdate(this.state[incidentKey], resolvedDescription, thedate.toISOString());
+
+			// Use initial incident date for resolved incident
+			const incidentData = this.generateIncidentMarkdown(
+				incidentId,
+				`${site.name} is back online!`,
+				this.formatIncidentUpdates(this.state[incidentKey]),
+				this.state[incidentKey].severity === 'none' ? 'notice' : this.state[incidentKey].severity,
+				this.state[incidentKey].initialIncidentDate,
+				true,
+				thedate,
+				site
+			);
+
+			await this.deployer.deploy(incidentData, incidentFile);
+			console.log(
+				chalk.green(
+					`[${site.name}] [${type}] Incident resolved: ${incidentFile}`
 				)
-			) {
-				const existingContent = fs.readFileSync(
-					path.join(process.cwd(), process.env.LOCAL_CSTATE_PATH, incidentFile),
-					'utf-8'
-				);
-				const frontmatterMatch = existingContent.match(/^---[\s\S]*?---\n/);
-				const existingFrontmatter = frontmatterMatch ? frontmatterMatch[0] : '';
-				const existingUpdates = existingContent.substring(
-					existingFrontmatter.length
-				);
+			);
 
-				const resolvedDescription = config.incidentMessages.resolved.replace(
-					'{{site.name}}',
-					site.name
-				);
-
-				// Use initial incident date for resolved incident
-				const incidentData = this.generateIncidentMarkdown(
-					incidentId,
-					`${site.name} is back online!`,
-					this.formatIncidentUpdate(
-						resolvedDescription,
-						thedate.toISOString()
-					) + existingUpdates,
-					this.state[incidentKey].severity === 'none' ? 'notice' : this.state[incidentKey].severity,
-					this.state[incidentKey].initialIncidentDate,
-					true,
-					thedate,
-					site
-				);
-
-				await this.deployer.deploy(incidentData, incidentFile);
-				console.log(
-					chalk.green(
-						`[${site.name}] [${type}] Incident resolved: ${incidentFile}`
-					)
-				);
-
-				// Reset state on resolution
-				this.resetState(incidentKey);
-				this.saveState();
-			}
+			// Reset state on resolution
+			this.resetState(incidentKey);
+			this.saveState();
 		}
 	}
 
@@ -462,6 +435,17 @@ ${description}`;
 		return `*${message}* {{< track "${timestamp}" >}}\n`;
 	}
 
+	prependIncidentUpdate(state, message, timestamp) {
+		if (!Array.isArray(state.updates)) {
+			state.updates = [];
+		}
+		state.updates.unshift(this.formatIncidentUpdate(message, timestamp));
+	}
+
+	formatIncidentUpdates(state) {
+		return Array.isArray(state.updates) ? state.updates.join('') : '';
+	}
+
 	resetState(incidentKey) {
 		if (this.state[incidentKey]) {
 			this.state[incidentKey] = {
@@ -471,6 +455,7 @@ ${description}`;
 				incidentCreated: false,
 				initialIncidentDate: null,
 				incidentFile: null,
+				updates: [],
 			};
 		}
 	}

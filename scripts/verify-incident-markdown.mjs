@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import IncidentManager from '../utils/incidentManager.js';
 
 process.env.LOCAL_CSTATE_PATH = process.env.LOCAL_CSTATE_PATH || '.';
@@ -106,5 +107,52 @@ assert.equal(
   }),
   'maintenance'
 );
+
+const testModeFalse = execFileSync(
+  process.execPath,
+  [
+    '--input-type=module',
+    '-e',
+    "process.env.TESTMODE='false'; const { default: config } = await import('./config/config.js?testmode_false=' + Date.now()); console.log(config.testMode);",
+  ],
+  { encoding: 'utf8' }
+).trim();
+assert.equal(testModeFalse, 'false');
+
+const testModeTrue = execFileSync(
+  process.execPath,
+  [
+    '--input-type=module',
+    '-e',
+    "process.env.TESTMODE='true'; const { default: config } = await import('./config/config.js?testmode_true=' + Date.now()); console.log(config.testMode);",
+  ],
+  { encoding: 'utf8' }
+).trim();
+assert.equal(testModeTrue, 'true');
+
+let deployed = null;
+manager.deployer = {
+  async deploy(content, filePath) {
+    deployed = { content, filePath };
+  },
+};
+manager.saveState = () => {};
+manager.state['API-http-status'] = {
+  consecutiveFailures: 5,
+  lastFailure: Date.now(),
+  severity: 'down',
+  incidentCreated: true,
+  initialIncidentDate: '2026-05-09T09:00:00.000Z',
+  incidentFile: 'content/issues/2026-05-09-http-status-api.md',
+  updates: ['*Earlier update* {{< track "2026-05-09T09:00:00.000Z" >}}\n'],
+};
+
+await manager.resolveIncidentIfExisting('http-status', { name: 'API' });
+
+assert.equal(deployed.filePath, 'content/issues/2026-05-09-http-status-api.md');
+assert.match(deployed.content, /Earlier update/);
+assert.match(deployed.content, /The issue with our system "API" has been resolved/);
+assert.match(deployed.content, /resolved: true/);
+assert.equal(manager.state['API-http-status'].incidentCreated, false);
 
 console.log('monitorbot cState v7 Markdown verification passed.');

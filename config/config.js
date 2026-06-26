@@ -2,12 +2,20 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+function envBoolean(name, defaultValue = false) {
+	const value = process.env[name];
+	if (value === undefined || value === '') {
+		return defaultValue;
+	}
+	return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
+}
+
 export default {
 	deployment: {
 		method: 'local', // Default deployment method (local, ftp, or git)
 	},
 	outputMode: 'incident', // incident, experiment, announcement, or maintenance
-	testMode: process.env.TESTMODE || false, // Set to false for actual deployment
+	testMode: envBoolean('TESTMODE', false), // Set to false for actual deployment
 	runningMethod: process.env.RUNNING_METHOD || 'cron', // 'cron' for continuous process or 'single' for check once and quit
 	checkInterval: process.env.CHECK_INTERVAL || 5 * 1000, // 5 seconds (adjust as needed), only for cron running method
 	httpMonitor: {
